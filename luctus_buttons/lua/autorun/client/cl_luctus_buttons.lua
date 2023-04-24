@@ -37,7 +37,15 @@ local function beautifyButton(el)
     end
 end
 
-function LuctusOpenButtonMenu()
+local function LuctusSetStateText(panel,name,stateTable)
+    if stateTable[name] then
+        panel:SetText(string.format(LUCTUS_BUTTONS_STATE_ON, name))
+    else
+        panel:SetText(string.format(LUCTUS_BUTTONS_STATE_OFF, name))
+    end
+end
+
+function LuctusOpenButtonMenu(state)
     if IsValid(luctus_btn_frame) then return end
     luctus_btn_frame = vgui.Create("DFrame")
     luctus_btn_frame:SetTitle(LUCTUS_BUTTONS_WINDOW_TITLE)
@@ -60,7 +68,7 @@ function LuctusOpenButtonMenu()
     for k,v in pairs(LUCTUS_BUTTONS_BUTTONS) do
         local item = plist:Add("DButton")
         item:SetSize(230,50)
-        item:SetText(LUCTUS_BUTTONS_BUTTONTEXT..k)
+        item:SetText(string.format(LUCTUS_BUTTONS_BUTTONTEXT,k))
         item.k = k
         function item:DoClick()
             net.Start("luctus_buttons")
@@ -69,12 +77,31 @@ function LuctusOpenButtonMenu()
         end
         beautifyButton(item)
     end
+    for k,v in pairs(LUCTUS_BUTTONS_TOGGLEBUTTONS) do
+        local item = plist:Add("DButton")
+        item:SetSize(230,50)
+        LuctusSetStateText(item,k,state)
+        item.k = k
+        function item:DoClick()
+            if state[k] then state[k] = false else state[k] = true end
+            LuctusSetStateText(item,k,state)
+            net.Start("luctus_buttons")
+                net.WriteString(self.k)
+            net.SendToServer()
+        end
+        beautifyButton(item)
+    end
 end
 
-hook.Add("OnPlayerChat","luctus_buttons",function(ply,text,team,dead)
-    if ply == LocalPlayer() and text == LUCTUS_BUTTONS_COMMAND then
-        LuctusOpenButtonMenu()
-    end
+net.Receive("luctus_buttons",function()
+    local tab = net.ReadTable()
+    print("[DEBUG]","table:",tab)
+    PrintTable(tab)
+    LuctusOpenButtonMenu(tab)
+end)
+
+net.Receive("luctus_buttons_notif",function()
+    notification.AddLegacy(net.ReadString(),0,5)
 end)
 
 print("[luctus_buttons] cl loaded")
